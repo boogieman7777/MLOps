@@ -8,7 +8,7 @@ import mlflow                                                # 실험 추적 및
 import mlflow.sklearn                                        # sklearn 모델 전용 MLflow 기능
 import os                                                    # 환경변수 읽기용
 from mlflow.tracking import MlflowClient                     # MLflow 서버 직접 조작용 클라이언트
-from sklearn.svm import SVC
+ 
 # ── MLflow 연결 설정 ──────────────────────────────────────────
 # 환경변수 MLFLOW_TRACKING_URI가 있으면 사용, 없으면 로컬 서버 주소로 대체
 # GitHub Actions에서는 Secrets에 등록된 값이 자동으로 환경변수로 주입됨
@@ -39,24 +39,22 @@ except FileNotFoundError:
 # ── 2. 실험 파라미터 목록 정의 ────────────────────────────────
 run_results = []                                             # 각 run의 결과를 담을 리스트 (나중에 최고 모델 선택용)
 param_list = [
-    {"C": 0.1, "kernel": "linear"},
-    {"C": 1.0, "kernel": "rbf"},
-    {"C": 10.0, "kernel": "rbf"},
+    {"n_estimators": 50,  "max_depth": 2},                  # 트리 50개, 최대 깊이 2 (단순한 모델)
+    {"n_estimators": 100, "max_depth": 3},                  # 트리 100개, 최대 깊이 3
+    {"n_estimators": 200, "max_depth": 5},                  # 트리 200개, 최대 깊이 5
+    {"n_estimators": 300, "max_depth": 4},                  # 트리 300개, 최대 깊이 4 (복잡한 모델)
 ]
  
 # ── 3. 파라미터별 실험 실행 ───────────────────────────────────
 for params in param_list:
-    # 이름 짓는 규칙도 SVM에 맞게 변경
-    run_name = f"SVC_C{params['C']}_{params['kernel']}"
-    
-    with mlflow.start_run(run_name=run_name):
+    run_name = f"n{params['n_estimators']}_d{params['max_depth']}"  # ex) "n100_d3" → MLflow UI에서 식별용
+    with mlflow.start_run(run_name=run_name):                # 이 블록 안의 모든 기록이 하나의 run으로 묶임
  
         # 전처리(StandardScaler) + 모델을 하나의 파이프라인으로 구성
         # Pipeline 사용 시 predict()만 해도 자동으로 스케일링 후 예측
         pipe = Pipeline([
-            ("scaler", StandardScaler()),
-            # RandomForestClassifier를 지우고 SVC로 변경. 
-            ("clf", SVC(**params, random_state=42)) 
+            ("scaler", StandardScaler()),                    # 특성값을 평균0, 표준편차1로 정규화
+            ("clf", RandomForestClassifier(**params, random_state=42))  # 랜덤포레스트 (random_state로 재현성 보장)
         ])
         pipe.fit(X_train, y_train)                           # 학습: 스케일러 fit + 모델 학습 한 번에 처리
  
@@ -89,11 +87,11 @@ registered = mlflow.register_model(
 )
 print(f"✅ 등록 완료! Version: {registered.version}")
  
-'''# ── 6. Production alias 설정 ──────────────────────────────────
+# ── 6. Production alias 설정 ──────────────────────────────────
 client = MlflowClient()                                      # Registry 조작을 위한 클라이언트
 client.set_registered_model_alias(
     name="iris_classifier",                                  # 대상 모델 이름
     alias="production",                                      # 붙일 별명 (predict.py에서 @production으로 참조)
     version=registered.version                               # 방금 등록된 버전에 alias 연결
 )
-print(f"🚀 production alias → Version {registered.version}")'''
+print(f"🚀 production alias → Version {registered.version}")
