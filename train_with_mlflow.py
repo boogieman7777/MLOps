@@ -87,11 +87,11 @@ registered = mlflow.register_model(
 )
 print(f"✅ 등록 완료! Version: {registered.version}")
  
-'''# ── 6. Production alias 설정 ──────────────────────────────────
+# ── 6. Production alias 설정 ──────────────────────────────────
 client = MlflowClient()                                      # Registry 조작을 위한 클라이언트
 client.set_registered_model_alias(
     name="iris_classifier",                                  # 대상 모델 이름
     alias="production",                                      # 붙일 별명 (predict.py에서 @production으로 참조)
     version=registered.version                               # 방금 등록된 버전에 alias 연결
 )
-print(f"🚀 production alias → Version {registered.version}")'''
+print(f"🚀 production alias → Version {registered.version}")
